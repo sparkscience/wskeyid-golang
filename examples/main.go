@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -57,29 +58,36 @@ func main() {
 
 		fmt.Println("Connected")
 
-		go func() {
-			for {
-				c.WriteJSON(map[string]interface{}{"type": "COOL"})
-				<-time.After(time.Second * time.Duration(randInt(10)))
-			}
-		}()
-
 		clientId := strings.TrimSpace(r.URL.Query().Get("client_id"))
 
 		fmt.Printf("Connected to client with ID %s\n", clientId)
 
+		closed := false
+		closedMut := sync.RWMutex{}
+
+		isClosed := func() bool {
+			closedMut.RLock()
+			defer closedMut.RUnlock()
+			return closed
+		}
+
 		go func() {
-			err := c.WriteJSON(servermessages.Message{Type: "TEXT_MESSAGE", Data: "Cool"})
-			fmt.Println("Sending message")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Got error %s", err.Error())
-				return
+			for {
+				err := c.WriteJSON(servermessages.Message{Type: "TEXT_MESSAGE", Data: "Cool"})
+				fmt.Println("Sending message")
+				if err != nil {
+					closedMut.Lock()
+					closed = true
+					closedMut.Unlock()
+					fmt.Fprintf(os.Stderr, "Got error %s", err.Error())
+					return
+				}
+				<-time.After(time.Second * time.Duration(randInt(10)))
 			}
-			<-time.After(time.Second * time.Duration(randInt(10)))
 		}()
 
-		for t, message, err := c.ReadMessage(); err == nil; {
-			fmt.Printf("Got message")
+		for t, message, err := c.ReadMessage(); err == nil && !isClosed(); t, message, err = c.ReadMessage() {
+			fmt.Printf("Got message\n")
 			var m clientmessage.Message
 			if t != websocket.BinaryMessage && t != websocket.TextMessage {
 				continue
@@ -96,6 +104,7 @@ func main() {
 			} else {
 				fmt.Printf("Got message from client %s: %s\n", clientId, str)
 			}
+			fmt.Println("Looping")
 		}
 
 		fmt.Println("Message stream ended between client and server. Closing connection")
