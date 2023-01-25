@@ -17,6 +17,7 @@ import (
 	"github.com/sparkscience/go-wskeyid/messages/servermessages"
 )
 
+// Needed for ping stuff
 const (
 	writeWait  = 60 * time.Second
 	pongWait   = 60 * time.Second
