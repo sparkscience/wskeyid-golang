@@ -17,6 +17,12 @@ import (
 	"github.com/sparkscience/go-wskeyid/messages/servermessages"
 )
 
+const (
+	writeWait  = 60 * time.Second
+	pongWait   = 60 * time.Second
+	pingPeriod = (pongWait * 9) / 10
+)
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
@@ -71,9 +77,29 @@ func main() {
 			return closed
 		}
 
+		setWriteDeadline := func(c *websocket.Conn) {
+			c.SetWriteDeadline(time.Now().Add(writeWait))
+		}
+
+		pingLoop := func(c *websocket.Conn) {
+			c.SetReadDeadline(time.Now().Add(pongWait))
+			c.SetPongHandler(func(string) error {
+				c.SetReadDeadline(time.Now().Add(pongWait))
+				return nil
+			})
+
+			for !isClosed() {
+				<-time.After(pingPeriod)
+				setWriteDeadline(c)
+			}
+		}
+
+		go pingLoop(c)
+
 		go func() {
 			for {
 				err := c.WriteJSON(servermessages.Message{Type: "TEXT_MESSAGE", Data: "Cool"})
+				setWriteDeadline(c)
 				fmt.Println("Sending message")
 				if err != nil {
 					closedMut.Lock()
@@ -87,6 +113,7 @@ func main() {
 		}()
 
 		for t, message, err := c.ReadMessage(); err == nil && !isClosed(); t, message, err = c.ReadMessage() {
+			c.SetReadDeadline(time.Now().Add(pongWait))
 			fmt.Printf("Got message\n")
 			var m clientmessage.Message
 			if t != websocket.BinaryMessage && t != websocket.TextMessage {
