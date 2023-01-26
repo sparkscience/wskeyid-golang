@@ -12,9 +12,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/sparkscience/go-wskeyid"
-	"github.com/sparkscience/go-wskeyid/messages/clientmessage"
-	"github.com/sparkscience/go-wskeyid/messages/servermessages"
+	"github.com/sparkscience/wskeyid-golang"
+	"github.com/sparkscience/wskeyid-golang/messages/clientmessage"
+	"github.com/sparkscience/wskeyid-golang/messages/servermessages"
 )
 
 // Needed for ping stuff

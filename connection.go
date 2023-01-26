@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/gorilla/websocket"
-	"github.com/sparkscience/go-wskeyid/messages/clientmessage"
-	"github.com/sparkscience/go-wskeyid/messages/servermessages"
+	"github.com/sparkscience/wskeyid-golang/messages/clientmessage"
+	"github.com/sparkscience/wskeyid-golang/messages/servermessages"
 )
 
 const challengeByteLength = 128
