@@ -89,9 +89,14 @@ func main() {
 				return nil
 			})
 
-			for !isClosed() {
+			for {
 				<-time.After(pingPeriod)
 				setWriteDeadline(c)
+				c.SetWriteDeadline(time.Now().Add(writeWait))
+				err := c.WriteMessage(websocket.PingMessage, nil)
+				if err != nil {
+					return
+				}
 			}
 		}
 
